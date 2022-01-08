@@ -6,87 +6,71 @@ async function main() {
     const data = await response.json();
     console.log(data);
 
-    // Grabbing your values
-    // Pull out just the samples
-    let dataSamples = data.samples
-    console.log(dataSamples);
+    // CREATE A WAY TO SELECT YOUR BIODIVERSITY ID NAMES //
 
-    // Pull out IDs
-    var IDs = dataSamples.map(function(obj)
-    {
-        var key = Object.keys(obj).sort()[0], rtn = {};
-        return rtn[key] = obj[key], rtn;
-    });
-    console.log(IDs);
+    // Break out the names field from the JSON into an array
+    let names = Object.values(data.names);
 
-    // Pull out otu_ids 
-    var otu_ids = dataSamples.map(function(obj)
-    {
-        var key = Object.keys(obj).sort()[1], rtn = {};
-        return rtn[key] = obj[key], rtn;
-    });
-    console.log(otu_ids);
+    // loop through all the names
+    for (i=0; i<names.length; i++) {
 
-    // Pull out sample_labels
-    var otu_labels = dataSamples.map(function(obj)
-    {
-        var key = Object.keys(obj).sort()[2], rtn = {};
-        return rtn[key] = obj[key], rtn;
-    });
-    console.log(otu_labels);
+        // create element for the field which is being updated (essentially a blank dropdown)
+        const blankDropdown = document.createElement('option');
+        // create an attribute to populate the field created (allow for the dropdown to be filled)
+        const dropdownValue = document.createAttribute('value')
 
-    // Pull out sample_values
-    var sample_values = dataSamples.map(function(obj)
-    {
-        var key = Object.keys(obj).sort()[3], rtn = {};
-        return rtn[key] = obj[key], rtn;
-    });
-    console.log(sample_values);
+        // fill in the dropdown with a name
+        blankDropdown.textContent = names[i];
+        // have that name tied to specific value
+        dropdownValue.value = names[i];
 
-    // Sorted sample values in ascending order
-    let sortedSampleValues = dataSamples.sort(function(a, b) {
-        return parseFloat(a.sample_values.length) - parseFloat(b.sample_values.length);
-    });
-    console.log(sortedSampleValues);
+        // create a new option
+        document.querySelector("#selDataset").append(blankDropdown);
+        // create a new attribute
+        blankDropdown.setAttributeNode(dropdownValue)
 
-    // Reverse the sorted sample values to make it descending order
-    descendingSampleValues = sortedSampleValues.reverse()
-    console.log(descendingSampleValues);
+    };
 
-    // Slice out the top 10 items on that descending list
-    slicedData = descendingSampleValues.slice(0,10);
-    console.log(slicedData);
+    // Lead off the page with one sample
+    displaySample(0);
 
+    // LOAD YOUR GRAPHS //
+
+    // 
+    function displaySample(valueSel) {
+        let indexSel = 0;
+        for (let i=0; i<names.length; i++) {
+            if (data.samples[i].id === valueSel) {
+                indexSel = i;
+            }
+        }
+
+        let sample_values = Object.values(data.samples[indexSel].sample_values);
+        let otu_labels = Object.values(data.samples[indexSel].otu_labels);
+        let otu_ids = Object.values(data.samples[indexSel].otu_ids);      
+
+        let out_ids_labeled = otu_ids.map(id => "OTU " + id);
+        let metadataStrings = (Object.entries(data.metadata[indexSel]))
+            .map(item => `${item[0]} : ${item[1]}`);
+
+        
     // Adding your x and y axis 
-    let trace1 = {
-        x: slicedData.map(object => object.sample_values.slice(0,10)),
-        y: slicedData.map(object => object.otu_ids.slice(0,10)),
-        text: slicedData.map(object => object.otu_labels.slice(0,10)),
-        type: "bar",
-        orientation: "h" 
-    }
+        let trace1 = [{
+            x: sample_values.slice(0,10).reverse(),
+            y: out_ids_labeled.slice(0,10).reverse(),
+            text: otu_labels.slice(0,10).reverse(),
+            type: "bar",
+            orientation: "h" 
+        }];
 
-    // Data array
-    // `data` has already been defined, so we must choose a new name here:
-    let traceData = [trace1];
+        const layout1 = {
+            title: '10 Most Frequently Occuring OTUs'
+        };
 
-    // Apply a title to the layout
-    let layout = {
-        title: "Bellybutton Biodiversity",
-        margin: {
-            l: 100,
-            r: 100,
-            t: 100,
-            b: 100
-          }
-  };
-  
-    // Render the plot to the div tag with id "plot"
-    // Note that we use `traceData` here, not `data`
-    Plotly.newPlot("bar", traceData, layout);
+        Plotly.newPlot('bar', trace1, layout1)
 
     // Bubble Chart
-    var trace2 = {
+    let trace2 = [{
         x: otu_ids,
         y: sample_values,
         mode: 'markers',
@@ -94,79 +78,43 @@ async function main() {
             color: otu_ids,
             size: sample_values, 
             text: otu_labels,
-        },
-    }
-
-    // Data array
-    // `data` has already been defined, so we must choose a new name here:
-    var traceData2 = [trace2];
+        }
+    }];
 
     // Apply a title to the layout
-    var layout2 = {
+    let layout2 = {
         title: "Sample Size per OTU",
         xaxis: {
-        title:'OTU ID'},
+        title:'OTU ID',
+        },
     };
 
-    // Render the plot to the div tag with id "plot"
-    // Note that we use `traceData` here, not `data`
-    Plotly.newPlot("bubble", traceData2, layout2);
+    Plotly.newPlot('bubble', trace2, layout2);
+
+    let oldMeta = document.querySelectorAll('#meta');
+    for (let i=0; i<oldMeta.length;i++) {
+        oldMeta[i].remove();
+    }
+
+
+    metadataStrings.map(item => {
+        let newP = document.createElement('p');
+        newP.textContent =item;
+        newP.id = "meta";
+        document.querySelector('.panel-body').appendChild(newP);
+    });
+
+    }
 
 }
-
-// Add event listener for the Demographic Information
- 
-// Add array of IDs
-    const subjectID = Object.values(dataSamples.id);
-
-// Create an array of demographic information
-    const demographicInfo = Object.keys(dataSamples);
-
-  // On change to the DOM
-  document.querySelector("#selDataset").addEventListener("change", event => {
-      console.log(this.value)
-      console.log()
-    
-    // Initialize an empty array for the country's data
-  let data = [];
-
-  if (event.target.value == 'us') {
-      data = us;
-  }
-  else if (event.target.value == 'uk') {
-      data = uk;
-  }
-  else if (event.target.value == 'canada') {
-      data = canada;
-  }
-
-  Plotly.restyle("pie", "values", [data]);
-});
 
 main()
 
 
+    // Question: what is the dropdownValue.value doing?
+    // Question: why are we calling these 'option' and 'value' in lines 18 & 20?
+    // Question: what is an attributeNode?
+    // Question: what is this displaySample(0)? I get why we do it, just what is it?
+    // BIG QUESTION: How do I get the Demographic Info to update based on the dropdown changing?
 
 
-
-
-
-   // // Sort the data for OTUs
-    // let sortedByTopTen = dataSamples.sort(function sortFunction(a, b) {
-    //     return b.sample_values - a.sample_values;
-    //   });
-    // console.log(sortedByTopTen);
-    // // Slice out the top 10 OTUs
-    // slicedData = sortedByTopTen.slice(0,10);
-    // console.log(slicedData);
-    // // Reverse the array to accommodate Plotly's defaults
-    // reversedData = slicedData.reverse()
-    // console.log(reversedData);
-
-    // let yticks = otu_ids.slice(0,10).map(otuID => `otu ${otuID}`).reverse();
-    // let traceDataThree = [{
-    //     y: yticks, 
-    //     x: sample_values.slice(0,10).reverse(),
-    //     type: "bar",
-    //     orientation: "h"
-    // }]
